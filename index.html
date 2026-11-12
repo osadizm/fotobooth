@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff6ea">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Photobooth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=Chonburi&family=Mali:wght@600;700&family=Prompt:ital,wght@0,300;0,400;0,600;0,800;1,800&family=Sriracha&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-screen="home">
+
+<header class="bar">
+  <button class="brand" data-go="home" aria-label="หน้าแรก"><span>📸</span> Photo<b>booth</b></button>
+  <div class="bar-tools">
+    <button class="icon-btn" id="fsBtn" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
+    <button class="icon-btn" id="setBtn" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
+  </div>
+</header>
+
+<!-- 1. หน้าแรก -->
+<section id="home" class="screen">
+  <div class="hero">
+    <div class="fan" id="fan" aria-hidden="true"></div>
+    <h1>ถ่ายรูปสนุก ๆ<br><em>เลือกกรอบได้ตามใจ</em></h1>
+    <p class="lead"><span id="frameCount"></span> กรอบให้เลือก · ถ่ายเสร็จเปลี่ยนกรอบได้ · บันทึก ปริ้น หรือแชร์ได้ทันที</p>
+    <button class="btn primary huge" id="startBtn">เริ่มเลย 📸</button>
+    <ol class="steps">
+      <li><b>1</b>เลือกกรอบ</li>
+      <li><b>2</b>ยิ้มให้กล้อง</li>
+      <li><b>3</b>เซฟหรือปริ้น</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 2. เลือกกรอบ -->
+<section id="frames" class="screen" hidden>
+  <div class="page-head">
+    <button class="btn ghost" id="framesBack">← กลับ</button>
+    <h2>เลือกกรอบรูป</h2>
+  </div>
+  <p class="note-banner" id="keepNote" hidden>📷 รูปที่ถ่ายไว้แล้วจะถูกใส่ในกรอบใหม่ให้อัตโนมัติ</p>
+  <div class="chips" id="cats" role="tablist"></div>
+  <div class="frame-grid" id="frameGrid"></div>
+</section>
+
+<!-- 3. ถ่ายรูป -->
+<section id="shoot" class="screen dark" hidden>
+  <div class="shoot-top">
+    <button class="btn ghost light" id="shootBack">← กลับ</button>
+    <div class="prog" id="prog"></div>
+    <button class="btn ghost light" id="flipBtn" hidden title="สลับกล้องหน้า/หลัง">🔄 สลับกล้อง</button>
+  </div>
+  <div class="stage" id="stage">
+    <div class="vp" id="vp">
+      <video id="video" playsinline muted autoplay></video>
+      <img id="freeze" alt="">
+      <div id="count" aria-live="assertive"></div>
+      <div class="cam-msg" id="camMsg" hidden></div>
+    </div>
+  </div>
+  <div class="shoot-bottom">
+    <div class="thumbs" id="thumbs"></div>
+    <div class="shoot-ctl">
+      <div class="timer" id="timerSel" role="radiogroup" aria-label="นับถอยหลัง"></div>
+      <button class="shutter" id="shutter" aria-label="เริ่มถ่าย"><span>ถ่าย</span></button>
+      <p class="hint">กดปุ่มครั้งเดียว ระบบจะนับถอยหลังและถ่ายให้ทุกรูป</p>
+    </div>
+  </div>
+  <div id="flash"></div>
+</section>
+
+<!-- 4. ผลลัพธ์ -->
+<section id="result" class="screen" hidden>
+  <div class="res-view">
+    <canvas id="out" aria-label="รูปที่ได้"></canvas>
+    <p class="tip">👆 แตะรูปช่องไหนก็ได้ เพื่อถ่ายช่องนั้นใหม่</p>
+  </div>
+  <aside class="res-panel">
+    <h2>เยี่ยมมาก! 🎉</h2>
+    <div class="note-banner warn" id="missing" hidden>
+      <span id="missingTxt"></span>
+      <button class="btn primary" id="shootMissing">ถ่ายเพิ่ม</button>
+    </div>
+    <h3>เลือกโทนสี</h3>
+    <div class="chips" id="filters"></div>
+    <div class="actions">
+      <button class="btn primary big" id="saveBtn">⬇ บันทึกรูป</button>
+      <button class="btn big" id="printBtn">🖨 ปริ้น</button>
+      <button class="btn big" id="shareBtn" hidden>📤 แชร์</button>
+    </div>
+    <div class="actions sub">
+      <button class="btn soft" id="changeFrame">🖼 เปลี่ยนกรอบ</button>
+      <button class="btn soft" id="retakeAll">↺ ถ่ายใหม่ทั้งหมด</button>
+    </div>
+    <button class="btn ghost wide" id="doneBtn">✓ เสร็จแล้ว ให้คนต่อไปถ่าย</button>
+  </aside>
+</section>
+
+<!-- ตั้งค่า -->
+<dialog id="settings">
+  <form method="dialog" class="set-form">
+    <h2>ตั้งค่า</h2>
+    <label class="fld">ข้อความบนกรอบ (เช่น ชื่องาน)
+      <input type="text" id="sTitle" maxlength="30">
+    </label>
+    <label class="tgl"><input type="checkbox" id="sDate"> แสดงวันที่บนรูป</label>
+    <label class="fld">กล้อง
+      <select id="sCam"><option value="">กล้องอัตโนมัติ</option></select>
+    </label>
+    <label class="tgl"><input type="checkbox" id="sMirror"> กลับด้านรูปเหมือนกระจก (กล้องหน้า)</label>
+    <label class="tgl"><input type="checkbox" id="sSound"> เสียงนับถอยหลังและชัตเตอร์</label>
+    <label class="fld">โหมดตู้: กลับหน้าแรกเองเมื่อไม่มีคนใช้
+      <select id="sIdle"><option value="0">ปิด</option><option value="60">หลัง 1 นาที</option><option value="120">หลัง 2 นาที</option><option value="300">หลัง 5 นาที</option></select>
+    </label>
+    <div class="set-actions"><button class="btn primary" value="ok">เรียบร้อย</button></div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="printBox"></div>
+<style id="pageSize"></style>
+
+<script src="js/frames.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
