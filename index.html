@@ -11,11 +11,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Charm:wght@700&family=Chonburi&family=Mali:wght@600;700&family=Prompt:ital,wght@0,300;0,400;0,600;0,800;1,800&family=Sriracha&display=swap">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
 </head>
 <body data-screen="home">
 
 <header class="bar">
-  <button class="brand" data-go="home" aria-label="หน้าแรก"><span>📸</span> Photo<b>booth</b></button>
+  <button class="brand" id="brandBtn" aria-label="หน้าแรก"><span>📸</span> Photo<b>booth</b></button>
   <div class="bar-tools">
     <button class="icon-btn" id="fsBtn" title="เต็มจอ" aria-label="เต็มจอ">⛶</button>
     <button class="icon-btn" id="setBtn" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</button>
@@ -24,15 +25,16 @@
 
 <!-- 1. หน้าแรก -->
 <section id="home" class="screen">
-  <div class="hero">
+  <div class="hero" id="hero">
     <div class="fan" id="fan" aria-hidden="true"></div>
-    <h1>ถ่ายรูปสนุก ๆ<br><em>เลือกกรอบได้ตามใจ</em></h1>
-    <p class="lead"><span id="frameCount"></span> กรอบให้เลือก · ถ่ายเสร็จเปลี่ยนกรอบได้ · บันทึก ปริ้น หรือแชร์ได้ทันที</p>
-    <button class="btn primary huge" id="startBtn">เริ่มเลย 📸</button>
+    <h1 class="h-normal">ถ่ายรูปสนุก ๆ<br><em>เลือกกรอบได้ตามใจ</em></h1>
+    <h1 class="h-event"><span id="evTitle"></span><br><em>มาถ่ายรูปกันเถอะ!</em></h1>
+    <p class="lead" id="lead"></p>
+    <button class="btn primary huge" id="startBtn">แตะเพื่อเริ่มถ่าย 📸</button>
     <ol class="steps">
       <li><b>1</b>เลือกกรอบ</li>
       <li><b>2</b>ยิ้มให้กล้อง</li>
-      <li><b>3</b>เซฟหรือปริ้น</li>
+      <li><b>3</b>รับรูปกลับบ้าน</li>
     </ol>
   </div>
 </section>
@@ -74,51 +76,165 @@
   <div id="flash"></div>
 </section>
 
-<!-- 4. ผลลัพธ์ -->
+<!-- 4. ตกแต่งผลลัพธ์ -->
 <section id="result" class="screen" hidden>
   <div class="res-view">
     <canvas id="out" aria-label="รูปที่ได้"></canvas>
     <p class="tip">👆 แตะรูปช่องไหนก็ได้ เพื่อถ่ายช่องนั้นใหม่</p>
   </div>
   <aside class="res-panel">
-    <h2>เยี่ยมมาก! 🎉</h2>
+    <h2>สวยมาก! 🎉</h2>
     <div class="note-banner warn" id="missing" hidden>
       <span id="missingTxt"></span>
       <button class="btn primary" id="shootMissing">ถ่ายเพิ่ม</button>
     </div>
     <h3>เลือกโทนสี</h3>
     <div class="chips" id="filters"></div>
-    <div class="actions">
-      <button class="btn primary big" id="saveBtn">⬇ บันทึกรูป</button>
-      <button class="btn big" id="printBtn">🖨 ปริ้น</button>
-      <button class="btn big" id="shareBtn" hidden>📤 แชร์</button>
-    </div>
+    <button class="btn primary huge wide go-btn" id="getBtn">รับรูปเลย →</button>
     <div class="actions sub">
       <button class="btn soft" id="changeFrame">🖼 เปลี่ยนกรอบ</button>
       <button class="btn soft" id="retakeAll">↺ ถ่ายใหม่ทั้งหมด</button>
     </div>
-    <button class="btn ghost wide" id="doneBtn">✓ เสร็จแล้ว ให้คนต่อไปถ่าย</button>
+    <button class="btn ghost wide" id="cancelBtn">✕ ยกเลิก กลับหน้าแรก</button>
   </aside>
 </section>
 
+<!-- 5. รับรูป: QR + ปริ้น -->
+<section id="done" class="screen" hidden>
+  <div class="done-img"><img id="finalImg" alt="รูปของคุณ"></div>
+  <aside class="done-card">
+    <div id="qrArea">
+      <h2>สแกนโหลดรูปกลับบ้าน 📱</h2>
+      <div class="qr" id="qrBox"></div>
+      <p class="qr-msg" id="qrMsg"></p>
+      <button class="btn soft" id="qrRetry" hidden>↻ ลองส่งอีกครั้ง</button>
+    </div>
+    <h2 id="noQrHead" hidden>รูปของคุณพร้อมแล้ว! 🎉</h2>
+    <div class="actions">
+      <button class="btn big" id="printBtn">🖨 ปริ้นรูป</button>
+      <button class="btn big" id="saveBtn">⬇ บันทึกรูป</button>
+      <button class="btn big" id="shareBtn" hidden>📤 แชร์</button>
+    </div>
+    <p class="print-msg" id="printMsg"></p>
+    <button class="btn primary huge wide" id="finishBtn">✓ เสร็จแล้ว</button>
+    <p class="tmr" id="doneTimer"></p>
+    <button class="btn ghost wide" id="backEdit">← กลับไปแก้รูป</button>
+    <button class="btn ghost wide" id="retakeDone">↺ ไม่ชอบ ถ่ายใหม่</button>
+  </aside>
+</section>
+
+<!-- จุดลับสำหรับเจ้าหน้าที่ (โหมดงาน) -->
+<div id="hot" aria-hidden="true"></div>
+
+<!-- เมนูเจ้าหน้าที่ -->
+<dialog id="staff">
+  <div class="set-form">
+    <h2>เมนูเจ้าหน้าที่</h2>
+    <p class="muted" id="staffCount"></p>
+    <label class="fld" id="pinWrap">ใส่ PIN
+      <input type="password" id="pinIn" inputmode="numeric" maxlength="6" autocomplete="off">
+    </label>
+    <button class="btn" id="stReprint">🖨 ปริ้นรูปล่าสุดอีกครั้ง</button>
+    <button class="btn" id="stGallery">🗂 คลังรูปของงาน</button>
+    <button class="btn" id="stSettings">⚙️ ตั้งค่า</button>
+    <button class="btn primary" id="stExit">ออกจากโหมดงาน</button>
+    <button class="btn ghost" id="stClose">ปิด</button>
+  </div>
+</dialog>
+
 <!-- ตั้งค่า -->
-<dialog id="settings">
+<dialog id="settings" class="wide-dlg">
   <form method="dialog" class="set-form">
-    <h2>ตั้งค่า</h2>
-    <label class="fld">ข้อความบนกรอบ (เช่น ชื่องาน)
-      <input type="text" id="sTitle" maxlength="30">
-    </label>
-    <label class="tgl"><input type="checkbox" id="sDate"> แสดงวันที่บนรูป</label>
-    <label class="fld">กล้อง
-      <select id="sCam"><option value="">กล้องอัตโนมัติ</option></select>
-    </label>
-    <label class="tgl"><input type="checkbox" id="sMirror"> กลับด้านรูปเหมือนกระจก (กล้องหน้า)</label>
-    <label class="tgl"><input type="checkbox" id="sSound"> เสียงนับถอยหลังและชัตเตอร์</label>
-    <label class="fld">โหมดตู้: กลับหน้าแรกเองเมื่อไม่มีคนใช้
-      <select id="sIdle"><option value="0">ปิด</option><option value="60">หลัง 1 นาที</option><option value="120">หลัง 2 นาที</option><option value="300">หลัง 5 นาที</option></select>
-    </label>
-    <div class="set-actions"><button class="btn primary" value="ok">เรียบร้อย</button></div>
+    <div class="dlg-head"><h2>ตั้งค่างาน</h2><button class="btn primary" value="ok">เรียบร้อย</button></div>
+
+    <section class="set-sec">
+      <h3>🎉 งาน</h3>
+      <label class="fld">ชื่องาน / ข้อความบนกรอบ
+        <input type="text" id="sTitle" maxlength="30" placeholder="เช่น ต้น ❤ ฝน หรือ สุขสันต์วันเกิดน้องมิว">
+      </label>
+      <label class="tgl"><input type="checkbox" id="sDate"> แสดงวันที่บนรูป</label>
+      <div class="fld">กรอบที่ให้แขกเลือก <small class="muted">(เลือกกรอบเดียว แขกจะข้ามหน้าเลือกกรอบไปถ่ายเลย)</small></div>
+      <div class="chips" id="presetBtns"></div>
+      <div class="pick-grid" id="pickGrid"></div>
+      <label class="fld">โทนสีของรูป
+        <select id="sFilter"></select>
+      </label>
+      <label class="tgl"><input type="checkbox" id="sEdit"> ให้แขกเปลี่ยนกรอบ / โทนสี / ถ่ายบางช่องใหม่ได้ก่อนรับรูป</label>
+      <p class="muted">ถ้าไม่เลือกข้อนี้ แขกแค่กดถ่าย แล้วไปหน้ารับรูป (QR / ปริ้น) ทันที</p>
+    </section>
+
+    <section class="set-sec">
+      <h3>🖨 ปริ้น</h3>
+      <label class="fld">การปริ้น
+        <select id="sPrint">
+          <option value="off">ไม่ปริ้น</option>
+          <option value="guest">ให้แขกกดปริ้นเอง (ชุดละ 1 ครั้ง)</option>
+          <option value="auto">ปริ้นอัตโนมัติทุกชุด</option>
+        </select>
+      </label>
+      <p class="muted">ปริ้นลงกระดาษ 4x6 นิ้ว (กรอบแถบยาวได้ 2 แถบ ตัดครึ่งแบ่งกันได้) · อยากให้ปริ้นทันทีโดยไม่มีหน้าต่างถาม ให้เปิด Chrome ด้วยตัวเลือก <code>--kiosk-printing</code> (ดู README)</p>
+      <button type="button" class="btn soft" id="testPrint">ปริ้นทดสอบ</button>
+    </section>
+
+    <section class="set-sec">
+      <h3>📱 QR Code ให้แขกโหลดรูป</h3>
+      <p class="muted">ใช้ Cloudinary (ฟรี) เป็นที่เก็บรูป ถ้าไม่ตั้งค่า จะไม่มี QR แต่ยังปริ้นได้ และรูปทุกชุดจะเก็บไว้ในเครื่องนี้</p>
+      <details class="howto">
+        <summary>วิธีตั้งค่า Cloudinary (ทำครั้งเดียว ~5 นาที)</summary>
+        <ol>
+          <li>สมัครฟรีที่ cloudinary.com</li>
+          <li>หน้า Dashboard คัดลอก <b>Cloud name</b> มาใส่ช่องด้านล่าง</li>
+          <li>ไปที่ Settings → Upload → Upload presets → Add upload preset</li>
+          <li>ตั้ง Signing mode เป็น <b>Unsigned</b> แล้วกด Save</li>
+          <li>คัดลอกชื่อ preset มาใส่ช่องด้านล่าง แล้วกด "ทดสอบอัปโหลด"</li>
+        </ol>
+      </details>
+      <div class="grid2">
+        <label class="fld">Cloud name<input type="text" id="sCloud" autocomplete="off" spellcheck="false"></label>
+        <label class="fld">Upload preset<input type="text" id="sPreset" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="row"><button type="button" class="btn soft" id="testUp">ทดสอบอัปโหลด</button><span class="muted" id="testUpMsg"></span></div>
+    </section>
+
+    <section class="set-sec">
+      <h3>📷 กล้อง</h3>
+      <label class="fld">กล้อง
+        <select id="sCam"><option value="">กล้องอัตโนมัติ</option></select>
+      </label>
+      <label class="tgl"><input type="checkbox" id="sMirror"> กลับด้านรูปเหมือนกระจก (กล้องหน้า)</label>
+      <label class="tgl"><input type="checkbox" id="sSound"> เสียงนับถอยหลังและชัตเตอร์</label>
+    </section>
+
+    <section class="set-sec">
+      <h3>🔒 โหมดงาน (ให้แขกใช้เอง)</h3>
+      <p class="muted">ซ่อนปุ่มตั้งค่า เปิดเต็มจอ จอไม่ดับ และกลับหน้าแรกเองเมื่อไม่มีคนใช้ · เจ้าหน้าที่เข้าเมนูได้โดย <b>แตะมุมซ้ายบน 5 ครั้ง</b> หรือ <b>กดค้างที่มุมซ้ายบน 2 วินาที</b> หรือกด <b>Esc</b></p>
+      <div class="grid2">
+        <label class="fld">PIN เจ้าหน้าที่ (ไม่ใส่ก็ได้)<input type="password" id="sPin" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+        <label class="fld">ไม่มีคนใช้ กลับหน้าแรกหลัง
+          <select id="sIdle"><option value="60">1 นาที</option><option value="90">1 นาทีครึ่ง</option><option value="120">2 นาที</option><option value="300">5 นาที</option></select>
+        </label>
+      </div>
+      <div class="row">
+        <button type="button" class="btn primary big" id="startEvent">▶ เริ่มโหมดงาน</button>
+        <button type="button" class="btn soft" id="openGallery">🗂 คลังรูปของงาน</button>
+      </div>
+    </section>
   </form>
+</dialog>
+
+<!-- คลังรูป -->
+<dialog id="gallery" class="wide-dlg">
+  <div class="set-form">
+    <div class="dlg-head"><h2>คลังรูปของงาน</h2><button class="btn ghost" id="galClose">ปิด</button></div>
+    <p class="muted" id="galInfo"></p>
+    <div class="row">
+      <button class="btn primary" id="galZip">⬇ ดาวน์โหลดทั้งหมด (.zip)</button>
+      <button class="btn soft" id="galUp" hidden>☁ อัปโหลดรูปที่ค้าง</button>
+      <button class="btn ghost" id="galClr">ลบทั้งหมด</button>
+    </div>
+    <div class="gal" id="galGrid"></div>
+    <p class="muted">รูปทุกชุดเก็บไว้ในเบราว์เซอร์เครื่องนี้ กันเน็ตล่ม · กรอบสีเหลือง = ยังไม่ได้อัปโหลด · แตะรูปเพื่อดาวน์โหลด</p>
+  </div>
 </dialog>
 
 <div id="toast" role="status" aria-live="polite"></div>

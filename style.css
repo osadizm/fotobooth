@@ -150,3 +150,77 @@ dialog::backdrop{background:rgba(23,18,31,.55);backdrop-filter:blur(3px)}
   #printBox img{flex:1;min-width:0;height:100%;object-fit:contain}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ งานอีเวนต์ ============ */
+.muted{color:var(--mute);font-size:.9rem;margin:0}
+code{background:#f4ecff;padding:1px 6px;border-radius:6px;font-size:.85em}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){.grid2{grid-template-columns:1fr}}
+
+/* หน้าแรก: โหมดปกติ/โหมดงาน */
+.h-event{display:none}
+body.event .h-normal{display:none}
+body.event .h-event{display:block}
+body.event .bar-tools{display:none}
+body.event .brand{cursor:default}
+body.event #home .hero{cursor:pointer}
+body.event #startBtn{animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.06)}}
+.fan[data-n="1"] canvas{transform:translateX(-50%) rotate(-2deg)!important}
+.fan[data-n="2"] canvas:nth-child(1){transform:translateX(-95%) rotate(-7deg)!important}
+.fan[data-n="2"] canvas:nth-child(2){transform:translateX(-5%) rotate(6deg)!important}
+
+/* หน้าแก้รูป */
+.go-btn{margin-top:22px}
+.go-btn:disabled{opacity:.45}
+
+/* หน้ารับรูป */
+#done{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:center}
+@media (min-width:900px){#done{grid-template-columns:minmax(0,1.2fr) minmax(340px,1fr);min-height:calc(100vh - 110px)}}
+.done-img{display:flex;justify-content:center}
+.done-img img{max-width:100%;max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);border-radius:6px;box-shadow:0 20px 50px rgba(42,31,61,.25);background:#fff}
+@media (max-width:899px){.done-img img{max-height:52vh}}
+.done-card{background:var(--card);border-radius:28px;padding:26px;box-shadow:var(--shadow);text-align:center;display:flex;flex-direction:column;gap:12px}
+.done-card h2{margin:0 0 6px;font-size:1.6rem}
+.qr{background:#fff;border:3px solid var(--line);border-radius:22px;padding:10px;width:min(300px,70vw);aspect-ratio:1;margin:0 auto;display:grid;place-items:center}
+.qr canvas{width:100%;height:auto;image-rendering:pixelated;display:block}
+.qr-msg{margin:8px 0 0;color:var(--mute)}
+.qr-fail{font-size:3.5rem}
+.spin{width:56px;height:56px;border-radius:50%;border:6px solid var(--line);border-top-color:var(--coral);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.done-card .actions{margin-top:4px}
+.print-msg{margin:0;color:#2b8a3e;font-weight:600;min-height:0}
+.print-msg:empty{display:none}
+.tmr{margin:0;color:var(--mute);font-size:.9rem;min-height:1.2em}
+
+/* มุมลับเจ้าหน้าที่ */
+#hot{display:none;position:fixed;top:0;left:0;width:84px;height:84px;z-index:40;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+body.event #hot{display:grid;place-items:center}
+#hot::after{content:'';width:44px;height:44px;border-radius:50%;border:3px solid transparent;background:conic-gradient(var(--coral) var(--p,0%),transparent 0);opacity:.85}
+#hot.hold{animation:hp 2s linear forwards}
+#hot.hold::after{border-color:rgba(42,31,61,.25)}
+@property --p{syntax:'<percentage>';inherits:false;initial-value:0%}
+@keyframes hp{to{--p:100%}}
+
+/* หน้าต่างตั้งค่า / เมนู */
+dialog{max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto}
+.wide-dlg{width:min(760px,calc(100% - 24px))}
+.dlg-head{display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:-26px;background:#fff;padding:14px 0;margin:-14px 0 0;z-index:2}
+.set-sec{border-top:2px dashed var(--line);padding-top:16px;display:flex;flex-direction:column;gap:12px}
+.set-sec h3{margin:0;font-size:1.1rem}
+.howto{background:#fff8e6;border-radius:14px;padding:10px 14px;font-size:.92rem}
+.howto summary{cursor:pointer;font-weight:600}
+.howto ol{margin:8px 0 0;padding-left:22px;line-height:1.7}
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px}
+.pick{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:#faf5ee;border-radius:14px;padding:10px 6px 8px;font-size:.8rem;text-align:center;cursor:pointer;border:3px solid transparent}
+.pick:has(input:checked){border-color:var(--coral);background:#fff0f0}
+.pick input{position:absolute;top:6px;left:6px;width:18px;height:18px;accent-color:var(--coral)}
+.pth{height:96px;display:flex;align-items:center}
+.pth canvas{max-height:96px;max-width:84px;width:auto;height:auto;box-shadow:0 3px 8px rgba(0,0,0,.18);border-radius:2px}
+#staff{width:min(380px,calc(100% - 28px))}
+#staff .set-form{gap:10px}
+#pinIn{text-align:center;font-size:1.5rem;letter-spacing:.4em}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+.gal img{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:8px;cursor:pointer;background:#eee}
+.gal img.pend{outline:3px solid var(--sun)}

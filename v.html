@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fff6ea">
+<title>รูปของคุณ 📸</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;800&display=swap">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;min-height:100dvh;font-family:'Prompt',system-ui,sans-serif;color:#2a1f3d;background:#fff6ea;
+    background-image:radial-gradient(rgba(42,31,61,.06) 1.5px,transparent 1.5px);background-size:22px 22px;
+    display:flex;flex-direction:column;align-items:center;padding:24px 16px calc(28px + env(safe-area-inset-bottom));text-align:center}
+  h1{margin:0 0 4px;font-size:1.6rem}
+  p{margin:0;color:#7a6b8a}
+  .pic{margin:20px 0;max-width:min(100%,520px)}
+  .pic img{max-width:100%;max-height:68vh;border-radius:6px;box-shadow:0 18px 44px rgba(42,31,61,.25);background:#fff;display:block;margin:0 auto;-webkit-touch-callout:default}
+  button,a.btn{font:inherit;font-weight:600;font-size:1.15rem;border:0;border-radius:999px;padding:16px 34px;background:#ff5a5f;color:#fff;
+    box-shadow:0 4px 0 #e8434a,0 10px 24px rgba(255,90,95,.35);cursor:pointer;text-decoration:none;display:inline-block}
+  .hint{margin-top:14px;font-size:.92rem}
+  .err{margin-top:40px}
+  footer{margin-top:auto;padding-top:28px;font-size:.8rem;color:#a99bb8}
+</style>
+</head>
+<body>
+  <h1>รูปของคุณ 📸</h1>
+  <p>ขอบคุณที่มาร่วมสนุกนะ 💖</p>
+  <div class="pic"><img id="img" alt="รูปจากตู้ถ่ายรูป"></div>
+  <button id="saveBtn">⬇ บันทึกรูปลงมือถือ</button>
+  <p class="hint" id="hint">ถ้ากดแล้วไม่บันทึก ให้กดค้างที่รูป แล้วเลือก "บันทึกรูปภาพ"</p>
+  <footer>Photobooth</footer>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const c = q.get('c'), p = q.get('p'), f = (q.get('f') || 'jpg').replace(/[^a-z0-9]/gi, '');
+  const ok = c && p && /^[\w-]+$/.test(c) && /^[\w\-\/.]+$/.test(p);
+  if (!ok) {
+    document.querySelector('.pic').innerHTML = '<p class="err">ไม่พบรูป ลิงก์อาจไม่ครบ ลองสแกน QR ใหม่อีกครั้ง</p>';
+    document.getElementById('saveBtn').hidden = true; document.getElementById('hint').hidden = true; return;
+  }
+  const base = 'https://res.cloudinary.com/' + c + '/image/upload/';
+  const src = base + p + '.' + f, dl = base + 'fl_attachment/' + p + '.' + f;
+  const img = document.getElementById('img');
+  img.src = src;
+  img.onerror = () => { document.querySelector('.pic').innerHTML = '<p class="err">โหลดรูปไม่สำเร็จ ลองเช็กอินเทอร์เน็ตแล้วรีเฟรชหน้านี้</p>'; };
+  const name = 'photobooth-' + p.split('/').pop() + '.' + f;
+  document.getElementById('saveBtn').onclick = async () => {
+    // มือถือ: เปิดเมนูแชร์ (iPhone เลือก "บันทึกรูปภาพ" ได้) · คอม: ดาวน์โหลดไฟล์
+    try {
+      const blob = await (await fetch(src)).blob();
+      const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] }) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        await navigator.share({ files: [file] }); return;
+      }
+    } catch (e) { if (e.name === 'AbortError') return; }
+    location.href = dl;
+  };
+})();
+</script>
+</body>
+</html>
