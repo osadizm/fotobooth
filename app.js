@@ -7,11 +7,13 @@
   /* ---------- ค่าที่จำไว้ในเครื่อง ---------- */
   const DEF = {
     title: 'วันแสนสนุก', showDate: true, timer: 3, mirror: true, sound: true, camId: '', facing: 'user', frame: 'classic',
-    allowed: [], filter: 'none', edit: false, printMode: 'guest', cloud: '', preset: '', pin: '', idle: 90, eventMode: false
+    allowed: [], filter: 'none', edit: false, printMode: 'guest', cloud: '', preset: '', pin: '', idle: 90, eventMode: false, qrWhere: 'booth', tag: ''
   };
   let S = DEF;
   try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem('photobooth') || '{}')); } catch (e) {}
   const save = () => { try { localStorage.setItem('photobooth', JSON.stringify(S)); } catch (e) {} };
+  const newTag = () => 'pb-' + Math.random().toString(36).slice(2, 8);
+  if (!S.tag) { S.tag = newTag(); save(); }
 
   let frame = FRAMES.find(f => f.id === S.frame) || FRAMES[0];
   let photos = [];        // ภาพดิบของแต่ละช่อง ครอปตอนวาดลงกรอบ จึงเปลี่ยนกรอบได้
@@ -325,6 +327,7 @@
     $('retakeDone').hidden = guestEdits();
     $('printBtn').hidden = ev ? pm !== 'guest' : false;
     $('qrArea').hidden = !hasCloud(); $('noQrHead').hidden = hasCloud();
+    $('qrHead').textContent = S.qrWhere === 'board' ? 'ไปสแกน QR ที่จอข้าง ๆ ได้เลย 📺' : 'สแกนโหลดรูปกลับบ้าน 📱';
     $('printMsg').textContent = '';
     if (fin && fin.ver === ver) { reflectPrint(); return; }      // ไม่มีอะไรเปลี่ยน ใช้ของเดิม
     renderOut();
@@ -348,12 +351,15 @@
   }
   async function sendQR(f) {
     const box = $('qrBox'), msg = $('qrMsg'), retry = $('qrRetry');
-    retry.hidden = true; box.innerHTML = '<div class="spin"></div>'; msg.textContent = 'กำลังเตรียม QR...';
+    const onBoard = S.qrWhere === 'board';
+    retry.hidden = true; box.innerHTML = '<div class="spin"></div>'; msg.textContent = onBoard ? 'กำลังส่งรูปไปที่จอ QR...' : 'กำลังเตรียม QR...';
     try {
-      const view = await upload(f.blob);
-      f.rec.url = view; if (f.rec.id != null) dbPut(f.rec).catch(() => {});
+      const u = await upload(f.blob);
+      f.rec.url = u.view; if (f.rec.id != null) dbPut(f.rec).catch(() => {});
+      pushBoard(u, f.url);
       if (fin !== f) return;
-      const c = qrCanvas(view);
+      if (onBoard) { box.innerHTML = '<div class="qr-fail">📺</div>'; msg.textContent = '✓ รูปของคุณขึ้นที่จอ QR แล้ว ไปสแกนได้เลย'; return; }
+      const c = qrCanvas(u.view);
       box.innerHTML = '';
       if (c) { box.appendChild(c); msg.textContent = 'เปิดกล้องมือถือแล้วสแกนได้เลย'; }
       else { msg.textContent = 'สร้าง QR ไม่ได้ (โหลดตัวสร้าง QR ไม่สำเร็จ)'; }
@@ -398,20 +404,40 @@
   }
 
   /* ---------- อัปโหลด Cloudinary + QR ---------- */
-  async function upload(blob) {
+  async function upload(blob, test) {
     if (!hasCloud()) throw new Error('nocfg');
     let err;
     for (let n = 0; n < 3; n++) {
       const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 25000);
       try {
-        const fd = new FormData(); fd.append('file', blob, 'photo.jpg'); fd.append('upload_preset', S.preset); fd.append('tags', 'photobooth');
+        const fd = new FormData(); fd.append('file', blob, 'photo.jpg'); fd.append('upload_preset', S.preset); fd.append('tags', test ? 'photobooth-test' : 'photobooth,' + S.tag);
         const r = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(S.cloud) + '/image/upload', { method: 'POST', body: fd, signal: ctl.signal });
         const j = await r.json();
         if (!r.ok) { err = new Error((j.error && j.error.message) || 'upload failed'); if (r.status >= 400 && r.status < 500) break; continue; }
-        return new URL('v.html?c=' + encodeURIComponent(S.cloud) + '&p=' + encodeURIComponent(j.public_id) + '&f=' + encodeURIComponent(j.format || 'jpg'), location.href).href;
+        const f = j.format || 'jpg';
+        return { c: S.cloud, p: j.public_id, f, view: viewUrl(S.cloud, j.public_id, f) };
       } catch (e) { err = e; await wait(1500); } finally { clearTimeout(t); }
     }
     throw err;
+  }
+  const viewUrl = (c, p, f) => new URL('v.html?c=' + encodeURIComponent(c) + '&p=' + encodeURIComponent(p) + '&f=' + encodeURIComponent(f), location.href).href;
+  // ส่งรูปไปหน้าจอ QR (qr.html) ที่เปิดในเบราว์เซอร์เดียวกัน — ขึ้นทันทีไม่ต้องรอคลาวด์
+  const BC = 'BroadcastChannel' in window ? new BroadcastChannel('photobooth-board') : null;
+  async function pushBoard(u, dataUrl, t) {
+    let th = '';
+    try {
+      if (dataUrl) {
+        const im = new Image(); im.src = dataUrl; await im.decode();
+        const c = document.createElement('canvas'), w = 420; c.width = w; c.height = Math.round(w * im.naturalHeight / im.naturalWidth);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); th = c.toDataURL('image/jpeg', .72);
+      }
+    } catch (e) {}
+    const item = { c: u.c, p: u.p, f: u.f, t: t || Date.now(), th, tag: S.tag };
+    try {
+      const a = JSON.parse(localStorage.getItem('pbBoard') || '[]').filter(x => x.p !== item.p && x.tag === S.tag);
+      a.unshift(item); localStorage.setItem('pbBoard', JSON.stringify(a.slice(0, 12)));
+    } catch (e) {}
+    if (BC) BC.postMessage({ type: 'add', item });
   }
   function qrCanvas(text) {
     if (typeof qrcode !== 'function') return null;
@@ -486,7 +512,7 @@
     const b = $('galUp'); b.disabled = true; let ok = 0, bad = 0;
     for (const r of (await dbAll()).filter(r => !r.url)) {
       b.textContent = 'กำลังอัปโหลด... (' + (ok + bad + 1) + ')';
-      try { r.url = await upload(r.blob); await dbPut(r); ok++; } catch (e) { bad++; }
+      try { const u = await upload(r.blob); r.url = u.view; await dbPut(r); pushBoard(u, null, r.t); ok++; } catch (e) { bad++; }
     }
     b.disabled = false; b.textContent = '☁ อัปโหลดรูปที่ค้าง';
     toast('อัปโหลดสำเร็จ ' + ok + ' ชุด' + (bad ? ' · ไม่สำเร็จ ' + bad + ' ชุด' : '')); openGallery();
@@ -556,6 +582,7 @@
     $('sPrint').value = S.printMode; $('sCloud').value = S.cloud; $('sPreset').value = S.preset;
     $('sCam').value = S.camId; $('sMirror').checked = S.mirror; $('sSound').checked = S.sound;
     $('sPin').value = S.pin; $('sIdle').value = S.idle; $('testUpMsg').textContent = '';
+    $('sQrWhere').value = S.qrWhere; showBoardLink();
     $('startEvent').textContent = S.eventMode ? '✓ อยู่ในโหมดงานแล้ว' : '▶ เริ่มโหมดงาน';
     $('startEvent').disabled = S.eventMode;
     pickCache = {}; buildPick();
@@ -573,6 +600,24 @@
   $('sMirror').onchange = () => { S.mirror = $('sMirror').checked; save(); };
   $('sSound').onchange = () => { S.sound = $('sSound').checked; save(); };
   $('sPin').oninput = () => { S.pin = $('sPin').value.trim(); save(); };
+  $('sQrWhere').onchange = () => { S.qrWhere = $('sQrWhere').value; save(); };
+  $('sNewTag').onclick = () => {
+    if (!$('sNewTag').dataset.arm) { $('sNewTag').dataset.arm = 1; $('sNewTag').textContent = 'แตะอีกครั้งเพื่อยืนยัน'; setTimeout(() => { delete $('sNewTag').dataset.arm; $('sNewTag').textContent = '🆕 เริ่มงานใหม่'; }, 3000); return; }
+    delete $('sNewTag').dataset.arm; $('sNewTag').textContent = '🆕 เริ่มงานใหม่';
+    S.tag = newTag(); save(); try { localStorage.removeItem('pbBoard'); } catch (e) {} if (BC) BC.postMessage({ type: 'reset' });
+    showBoardLink(); toast('สร้างรหัสงานใหม่แล้ว จอ QR จะเริ่มจากว่าง ๆ');
+  };
+  function boardUrl() {
+    return new URL('qr.html?c=' + encodeURIComponent(S.cloud) + '&t=' + encodeURIComponent(S.tag) + '&n=' + encodeURIComponent(S.title), location.href).href;
+  }
+  function showBoardLink() {
+    $('sTag').value = S.tag; $('sBoard').value = boardUrl();
+    const box = $('sBoardQr'); box.innerHTML = '';
+    const c = hasCloud() && qrCanvas(boardUrl()); if (c) box.appendChild(c);
+    box.hidden = !c;
+  }
+  $('sBoard').onclick = async () => { $('sBoard').select(); try { await navigator.clipboard.writeText($('sBoard').value); toast('คัดลอกลิงก์แล้ว'); } catch (e) {} };
+  $('sOpenBoard').onclick = () => window.open(boardUrl(), 'pbboard', 'popup,width=1280,height=720');
   $('sIdle').onchange = () => { S.idle = +$('sIdle').value; save(); };
   $('sCam').onchange = async () => { S.camId = $('sCam').value; save(); if (stream) { stopCamera(); await startCamera(); fitVP(); } };
   $('testUp').onclick = async () => {
@@ -580,7 +625,7 @@
     if (!hasCloud()) { m.textContent = 'กรอก Cloud name และ Upload preset ก่อน'; return; }
     m.textContent = 'กำลังทดสอบ...';
     const c = thumb(frame, 300), b = await new Promise(r => c.toBlob(r, 'image/jpeg', .8));
-    try { await upload(b); m.textContent = '✓ ใช้งานได้ แขกจะได้ QR หลังถ่ายเสร็จ'; }
+    try { await upload(b, true); m.textContent = '✓ ใช้งานได้ แขกจะได้ QR หลังถ่ายเสร็จ'; }
     catch (e) { m.textContent = '✗ ไม่สำเร็จ: ' + (e.message === 'nocfg' ? 'ยังตั้งค่าไม่ครบ' : e.message) + ' — เช็กชื่อ และตั้ง preset เป็น Unsigned'; }
   };
   $('testPrint').onclick = () => { const c = document.createElement('canvas'); c.width = frame.W; c.height = frame.H; render(c.getContext('2d'), frame, null, opts()); doPrint({ url: c.toDataURL('image/jpeg', .9), frame }); };
@@ -651,7 +696,9 @@
 
   /* ---------- ไม่มีคนใช้นาน ๆ กลับหน้าแรก (เฉพาะโหมดงาน) ---------- */
   let deadline = 0;
-  function bumpIdle() { deadline = Date.now() + S.idle * 1000; }
+  // ถ้าใช้จอ QR แยก หน้ารับรูปไม่ต้องรอนาน ให้คนต่อไปถ่ายได้เลย
+  const idleSec = () => screen() === 'done' && S.qrWhere === 'board' ? Math.min(15, S.idle) : S.idle;
+  function bumpIdle() { deadline = Date.now() + idleSec() * 1000; }
   ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, bumpIdle, { passive: true }));
   setInterval(() => {
     const left = Math.ceil((deadline - Date.now()) / 1000), sc = screen();

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1630">
+<title>จอ QR · Photobooth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chonburi&family=Prompt:wght@400;600;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" defer></script>
+<style>
+  :root{--bg:#1e1630;--card:#fffaf3;--ink:#2a1f3d;--mute:#8c7d9c;--coral:#ff5a5f;--sun:#ffc93c}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:'Prompt',system-ui,sans-serif;color:#fff;background:radial-gradient(circle at 20% 0%,#3a2557,var(--bg) 60%);
+    display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden;padding:2vh 2.2vw;gap:2vh;cursor:default;user-select:none}
+  header{display:flex;align-items:center;gap:2vw}
+  h1{margin:0;font-family:'Chonburi',serif;font-weight:400;font-size:clamp(1.6rem,3.6vw,3.4rem);line-height:1.15;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .how{font-size:clamp(.95rem,1.5vw,1.5rem);background:rgba(255,255,255,.1);padding:.6em 1.2em;border-radius:999px;white-space:nowrap}
+  .how b{color:var(--sun)}
+  main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:2vw}
+  @media (orientation:portrait){main{grid-template-columns:1fr;grid-template-rows:minmax(0,1.15fr) minmax(0,1fr)}header{flex-wrap:wrap}.how{white-space:normal}}
+  .card{background:var(--card);color:var(--ink);border-radius:clamp(14px,1.6vw,28px);display:flex;align-items:center;gap:1.4vw;padding:1.4vw;min-height:0;min-width:0;position:relative;overflow:hidden}
+  .card .th{height:100%;min-width:0;flex:1;display:flex;justify-content:center;align-items:center}
+  .card .th img{max-height:100%;max-width:100%;border-radius:4px;box-shadow:0 6px 18px rgba(0,0,0,.22);background:#fff}
+  .card .q{height:100%;aspect-ratio:1/1.18;max-width:55%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6vh}
+  .card .q canvas{width:100%;height:auto;max-height:86%;aspect-ratio:1;object-fit:contain;image-rendering:pixelated;display:block}
+  .card .t{font-size:clamp(.75rem,1.1vw,1.1rem);color:var(--mute);white-space:nowrap}
+  .hero{flex-direction:row}
+  .hero .q{max-width:58%}
+  .hero .t{font-size:clamp(1rem,1.6vw,1.6rem);color:var(--ink);font-weight:600}
+  .badge{position:absolute;top:1.2vw;left:1.2vw;background:var(--coral);color:#fff;font-weight:800;padding:.35em .9em;border-radius:999px;font-size:clamp(.9rem,1.4vw,1.4rem);z-index:2}
+  .hero.new{animation:pop .7s cubic-bezier(.2,1.4,.5,1)}
+  @keyframes pop{from{transform:scale(.9);opacity:.3}to{transform:none;opacity:1}}
+  .rest{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(3,minmax(0,1fr));gap:1.4vw;min-height:0}
+  @media (orientation:portrait){.card{padding:1.4vh;gap:2vw}}
+  .rest .card.ghost{background:rgba(255,255,255,.05);border:2px dashed rgba(255,255,255,.15)}
+  .empty{grid-column:1/-1;grid-row:1/-1;display:grid;place-items:center;text-align:center}
+  .empty b{display:block;font-size:clamp(3rem,8vw,7rem)}
+  .empty span{font-size:clamp(1.3rem,2.6vw,2.4rem);color:#d9cdea}
+  footer{display:flex;justify-content:space-between;align-items:center;font-size:clamp(.75rem,1vw,.95rem);color:#a99bb8}
+  .dot{display:inline-block;width:.7em;height:.7em;border-radius:50%;background:#8c7d9c;margin-right:.5em;vertical-align:middle}
+  .dot.ok{background:#3ddc97}.dot.bad{background:var(--coral)}
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="title">Photobooth</h1>
+    <div class="how">📱 หารูปของคุณ แล้ว<b>สแกน QR</b>ด้วยกล้องมือถือ</div>
+  </header>
+  <main id="main"></main>
+  <footer><span><span class="dot" id="dot"></span><span id="status">กำลังเชื่อมต่อ...</span></span><span>แตะจอเพื่อเต็มจอ</span></footer>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const CLOUD = q.get('c') || '', TAG = q.get('t') || '', NAME = q.get('n') || '';
+  if (NAME) { document.getElementById('title').textContent = NAME; document.title = NAME + ' · จอ QR'; }
+  const SHOW = 7;                   // ล่าสุด 1 รูปใหญ่ + 6 รูปเล็ก
+  const items = new Map();          // public_id -> {c,p,f,t,th}
+  let lastTop = '', localOK = false, cloudState = '';
+
+  const viewUrl = it => new URL('v.html?c=' + encodeURIComponent(it.c) + '&p=' + encodeURIComponent(it.p) + '&f=' + encodeURIComponent(it.f || 'jpg'), location.href).href;
+  const thumbUrl = it => it.th || ('https://res.cloudinary.com/' + it.c + '/image/upload/c_limit,w_600,h_900/' + it.p + '.' + (it.f || 'jpg'));
+  function ago(t) {
+    const s = (Date.now() - t) / 1000;
+    if (s < 60) return 'เมื่อสักครู่'; if (s < 3600) return Math.floor(s / 60) + ' นาทีที่แล้ว';
+    return new Date(t).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+  }
+  const qrCache = new Map();
+  function qr(text) {
+    if (qrCache.has(text)) return qrCache.get(text);
+    if (typeof qrcode !== 'function') return null;
+    const g = qrcode(0, 'M'); g.addData(text); g.make();
+    const n = g.getModuleCount(), m = 2, s = 10, c = document.createElement('canvas');
+    c.width = c.height = (n + m * 2) * s;
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000';
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (g.isDark(r, k)) x.fillRect((k + m) * s, (r + m) * s, s, s);
+    qrCache.set(text, c); return c;
+  }
+  function card(it, hero) {
+    const d = document.createElement('div'); d.className = 'card' + (hero ? ' hero' : '');
+    const th = document.createElement('div'); th.className = 'th';
+    const im = new Image(); im.src = thumbUrl(it); im.alt = ''; th.appendChild(im);
+    const qd = document.createElement('div'); qd.className = 'q';
+    const c = qr(viewUrl(it));
+    if (c) qd.appendChild(c.cloneNode ? clone(c) : c);
+    const t = document.createElement('div'); t.className = 't'; t.dataset.t = it.t; t.textContent = (hero ? 'ล่าสุด · ' : '') + ago(it.t);
+    qd.appendChild(t);
+    d.append(th, qd);
+    if (hero) { const b = document.createElement('div'); b.className = 'badge'; b.textContent = 'ใหม่!'; d.appendChild(b); }
+    return d;
+  }
+  function clone(c) { const n = document.createElement('canvas'); n.width = c.width; n.height = c.height; n.getContext('2d').drawImage(c, 0, 0); return n; }
+  function draw() {
+    const list = [...items.values()].sort((a, b) => b.t - a.t).slice(0, SHOW), main = document.getElementById('main');
+    main.innerHTML = '';
+    if (!list.length) { main.innerHTML = '<div class="empty"><div><b>📸</b><span>ยังไม่มีรูป ไปถ่ายที่ตู้ได้เลย!</span></div></div>'; lastTop = ''; return; }
+    const top = card(list[0], true);
+    if (list[0].p !== lastTop && lastTop !== '') top.classList.add('new');
+    lastTop = list[0].p;
+    main.appendChild(top);
+    const rest = document.createElement('div'); rest.className = 'rest';
+    for (let i = 1; i < SHOW; i++) rest.appendChild(list[i] ? card(list[i]) : Object.assign(document.createElement('div'), { className: 'card ghost' }));
+    main.appendChild(rest);
+  }
+  function add(it, redraw = true) {
+    if (!it || !it.p || (TAG && it.tag && it.tag !== TAG)) return;
+    const old = items.get(it.p);
+    items.set(it.p, Object.assign({}, old, it, { th: it.th || (old && old.th) || '' }));
+    if (redraw) draw();
+  }
+
+  /* 1) เครื่องเดียวกับตู้: รับรูปทันทีผ่าน BroadcastChannel / localStorage */
+  function loadLocal() {
+    try { JSON.parse(localStorage.getItem('pbBoard') || '[]').forEach(it => add(it, false)); } catch (e) {}
+  }
+  loadLocal();
+  if ('BroadcastChannel' in window) {
+    const bc = new BroadcastChannel('photobooth-board');
+    bc.onmessage = e => {
+      if (e.data && e.data.type === 'add') { localOK = true; add(e.data.item); status(); }
+      if (e.data && e.data.type === 'reset') { items.clear(); location.reload(); }
+    };
+  }
+  addEventListener('storage', e => { if (e.key === 'pbBoard') { loadLocal(); draw(); } });
+
+  /* 2) เครื่องอื่น: ดึงรายการรูปของงานจาก Cloudinary ตามแท็ก */
+  async function poll() {
+    if (!CLOUD || !TAG) return;
+    try {
+      const r = await fetch('https://res.cloudinary.com/' + encodeURIComponent(CLOUD) + '/image/list/' + encodeURIComponent(TAG) + '.json?_=' + Date.now(), { cache: 'no-store' });
+      if (r.status === 404) { cloudState = 'ok'; status(); return; }           // ยังไม่มีรูปในงานนี้
+      if (r.status === 401) { cloudState = 'locked'; status(); return; }       // ยังไม่ได้เปิด Resource list
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json(); let changed = false;
+      (j.resources || []).forEach(x => {
+        if (!items.has(x.public_id)) changed = true;
+        add({ c: CLOUD, p: x.public_id, f: x.format, t: Date.parse(x.created_at) || Date.now() }, false);
+      });
+      cloudState = 'ok'; if (changed) draw();
+    } catch (e) { cloudState = 'offline'; }
+    status();
+  }
+  function status() {
+    const dot = document.getElementById('dot'), st = document.getElementById('status');
+    const n = items.size;
+    if (cloudState === 'locked') { dot.className = 'dot bad'; st.textContent = 'ดึงรูปจาก Cloudinary ไม่ได้: ต้องเปิด Resource list (Settings → Security)' + (localOK ? ' · ตอนนี้รับรูปจากเครื่องนี้แทน' : ''); return; }
+    if (cloudState === 'offline') { dot.className = 'dot bad'; st.textContent = 'ไม่มีอินเทอร์เน็ต · กำลังลองใหม่...'; return; }
+    dot.className = 'dot ok';
+    st.textContent = 'พร้อม · รูปในงานนี้ ' + n + ' ชุด' + (CLOUD && TAG ? '' : ' · รับรูปจากตู้บนเครื่องนี้');
+  }
+  if (!CLOUD || !TAG) status();
+  poll(); setInterval(poll, 5000);
+  setInterval(() => document.querySelectorAll('.t[data-t]').forEach(el => el.textContent = (el.closest('.hero') ? 'ล่าสุด · ' : '') + ago(+el.dataset.t)), 20000);
+
+  /* ตัวสร้าง QR โหลดแบบ defer — วาดใหม่เมื่อพร้อม */
+  addEventListener('load', draw);
+  draw();
+
+  /* แตะเพื่อเต็มจอ + กันจอดับ */
+  let wl = null;
+  document.addEventListener('click', async () => {
+    try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); } catch (e) {}
+    try { if (!wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => wl = null); } } catch (e) {}
+  });
+  document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && !wl) { try { wl = await navigator.wakeLock.request('screen'); } catch (e) {} } });
+})();
+</script>
+</body>
+</html>

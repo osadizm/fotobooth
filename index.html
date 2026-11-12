@@ -104,7 +104,7 @@
   <div class="done-img"><img id="finalImg" alt="รูปของคุณ"></div>
   <aside class="done-card">
     <div id="qrArea">
-      <h2>สแกนโหลดรูปกลับบ้าน 📱</h2>
+      <h2 id="qrHead">สแกนโหลดรูปกลับบ้าน 📱</h2>
       <div class="qr" id="qrBox"></div>
       <p class="qr-msg" id="qrMsg"></p>
       <button class="btn soft" id="qrRetry" hidden>↻ ลองส่งอีกครั้ง</button>
@@ -194,6 +194,26 @@
         <label class="fld">Upload preset<input type="text" id="sPreset" autocomplete="off" spellcheck="false"></label>
       </div>
       <div class="row"><button type="button" class="btn soft" id="testUp">ทดสอบอัปโหลด</button><span class="muted" id="testUpMsg"></span></div>
+      <label class="fld">แสดง QR ที่ไหน
+        <select id="sQrWhere">
+          <option value="booth">ที่หน้าจอตู้ (แขกสแกนก่อนกดเสร็จ)</option>
+          <option value="board">ที่จอ QR แยก (แขกเยอะ ไม่ต้องรอกันที่ตู้)</option>
+          <option value="both">ทั้งที่ตู้และจอ QR แยก</option>
+        </select>
+      </label>
+      <div class="board-box">
+        <div class="board-info">
+          <b>📺 จอ QR แยก</b>
+          <p class="muted">เปิดลิงก์นี้บนทีวี/แท็บเล็ตข้างตู้ จะแสดงรูปล่าสุดพร้อม QR ให้แขกสแกน · ถ้าเปิดบนเครื่องอื่นที่ไม่ใช่เครื่องตู้ ต้องเปิด <b>Resource list</b> ใน Cloudinary ก่อน (Settings → Security → Restricted media types → เอาติ๊ก Resource list ออก)</p>
+          <input type="text" id="sBoard" readonly title="แตะเพื่อคัดลอก">
+          <div class="row">
+            <button type="button" class="btn soft" id="sOpenBoard">เปิดบนเครื่องนี้ (จอที่ 2)</button>
+            <span class="muted">รหัสงาน <input type="text" id="sTag" readonly class="tag-in"></span>
+            <button type="button" class="btn ghost" id="sNewTag">🆕 เริ่มงานใหม่</button>
+          </div>
+        </div>
+        <div class="board-qr" id="sBoardQr" title="สแกนด้วยแท็บเล็ตเพื่อเปิดจอ QR"></div>
+      </div>
     </section>
 
     <section class="set-sec">
